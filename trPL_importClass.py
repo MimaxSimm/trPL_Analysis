@@ -7,39 +7,34 @@ import math
 import scipy
 
 class trPL_measurement_series:
-    def __init__(self, folderpath, BG, thickness = None, alpha = None, integration_times_seconds = None, reprates_Hz = None, powers = None, denoise = False, retime = True, mode = "manual", Nc = 2e18, Nv = 2e18, kT = 27.7*1e-3,  lambda_laser = 705e-9, spot_diameter =  2.72e-04, BD_ratio = 0.21, which = None):
+    def __init__(self, folderpath, BG, importPL = False, importSPV = False, thickness = None, alpha = None, denoise = False, retime = True, mode = "HySprint", Nc = 2e18, Nv = 2e18, kT = 27.7*1e-3,  lambda_laser = 705e-9, spot_diameter =  2.72e-04, BD_ratio = 0.21, which = None):
        
-        self.folderpath = folderpath
-        if not(reprates_Hz == None):
-            self.reprates_Hz = reprates_Hz
-        else:
-            self.reprates_Hz = []
-        if not(integration_times_seconds == None):
-            self.integration_times_seconds = integration_times_seconds
-        else:
-            self.integration_times_seconds = []
-        if not(powers == None):
-            self.powers = powers
-        else:
-            self.powers = []
-        #
         self.lambda_laser = lambda_laser
+        print("Lambda Laser set to: {:2e}".format(lambda_laser))
         self.spot_diameter = spot_diameter #m (measured)
+        print("Spot diameter set to: {:2e}".format(spot_diameter))
         self.spot_area = math.pi*(spot_diameter/2)**2 #m2
         #Film params
         self.thickness = thickness
+        print("Film thickness set to: {:2e}".format(thickness))
 
-        ## TODO ##
+        ## TODO: Generation profile calculation ##
         #if not(thickness == None):  
         #    self.thickness = thickness
         #elif not(alpha == None):
          #   self.
         
-        self.BD_ratio = BD_ratio
+        if (mode == "HySprint"):
+            self.BD_ratio = BD_ratio
+        else:
+            self.BD_ratio = 1.0
+        print("Beam dump ratio set to: {:2e}".format(BD_ratio))
+
         #Physics
         self.BG = BG
         self.Nc = Nc #cm-3
         self.Nv = Nv #cm-3
+        print("BG, Nc and Nv set to:"+str(BG)+" "+ str(Nc)+ " "+ str(Nv))
         self.kT = kT
         self.hc = 1.98645E-25
         self.ni = np.sqrt(self.Nc*self.Nv*np.exp(-self.BG/(self.kT)))
@@ -54,8 +49,18 @@ class trPL_measurement_series:
         self.S_colors = ['#33d1a3', '#04d288', '#098e68', '#046a55', '#054639', 'black']
         self.B2_colors = ['#abc6e5', '#81ADC8', '#62769c', '#465970', '#303d4d', 'black']  
 
-        self.files, self.ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.noise = self.TRPL_folder_read()
-        self.calculate_N0s()
+        
+        
+        if (importSPV and importPL):
+            self.TRPLs_files, self.TRPLs_ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.TRPLs_noise = self.TRPL_folder_read()
+            self.calculate_N0s()
+
+
+            
+        if (importPL):
+            self.TRPLs_files, self.TRPLs_ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.TRPLs_noise = self.TRPL_folder_read()
+            self.calculate_N0s()
+        
 
     def calculate_N0s(self):
         photon_energy = self.hc / self.lambda_laser #J
@@ -84,14 +89,14 @@ class trPL_measurement_series:
     #     G = alpha*photon_flux*np.exp(-alpha*z) #m-3.s-1
 
     #     df = self.PLpowers
-    #     G_total = np.empty((len(self.ts),))
+    #     G_total = np.empty((len(self.TRPLs_ts),))
 
-    #     for i, t in enumerate((self.ts)):
+    #     for i, t in enumerate((self.TRPLs_ts)):
     #         G_total[i] = np.trapezoid(G[z<=t], x = z[z<=t])
 
     #     self.Gs = G_total
 
-    def TRPL_readout_function(self, filepath, integration_time_seconds, reprate, denoise = False, retime = False, mode = "manual"):
+    def TRPL_readout_function(self, filepath, integration_time_seconds, reprate, denoise = False, retime = False, mode = "HySprint"):
         """
         Imports a TRPL data file.  
 
@@ -116,7 +121,7 @@ class trPL_measurement_series:
         
         """
 
-        if(mode == "manual"):
+        if(mode == "HySprint"):
             df = pd.read_csv(filepath, skiprows=8, header = None, encoding='latin-1', delimiter = '\t')
             self.binsize = 1e-9*df.iloc[0].astype('float64')[0]
             TRPL = df.iloc[2:,0].to_numpy(dtype = None).astype('int')
@@ -152,12 +157,12 @@ class trPL_measurement_series:
         TRPL_n = TRPL_denoise/np.amax(TRPL_denoise)
         
         if (retime):
-            if(mode == "manual"):
+            if(mode == "HySprint"):
                 t_TRPL = self.binsize*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
             elif(mode == "auto" or mode == "wannsee"):
                 t_TRPL = t-t[np.argmax(TRPL)]
         else:
-            if(mode == "manual"):
+            if(mode == "HySprint"):
                 t_TRPL = binsize*(np.arange(len(TRPL_n)))
             else:
                 t_TRPL = t
@@ -214,7 +219,7 @@ class trPL_measurement_series:
             self.integration_times_seconds.append(float(meas_ps[1][:-1]))
             self.PLs.append(1e-6*float(meas_ps[4][3:-2]))
         else:
-            if(self.mode == "manual"):
+            if(self.mode == "HySprint"):
                 self.sample.append(meas_ps[0])
                 meas_ps = meas_ps[1].split("-")
                 self.reprates_Hz.append(float(1e3*float(meas_ps[0][:-3])))
@@ -254,7 +259,7 @@ class trPL_measurement_series:
                 self.integration_times_seconds.append(float(meas_ps[1][:-1]))
                 self.PLs.append(1e-6*float(meas_ps[4][3:-2]))
             else:
-                if(self.mode == "manual"):
+                if(self.mode == "HySprint"):
                     self.sample.append(meas_ps[0])
                     meas_ps = meas_ps[1].split("-")
                     self.reprates_Hz.append(float(1e3*float(meas_ps[0][:-3])))
@@ -299,7 +304,7 @@ class trPL_measurement_series:
         
         binsize: binsize in ns. 
         
-        tau_COUNT_APD: Value for the dead time of the APD, found on the Laser Components COUNT manual. 
+        tau_COUNT_APD: Value for the dead time of the APD, found on the Laser Components COUNT HySprint. 
             
         Returns
         -------
@@ -381,26 +386,26 @@ class trPL_measurement_series:
         """
 
         if (selection == None):
-            selection = [i for i in range(len(self.files))]
+            selection = [i for i in range(len(self.TRPLs_files))]
 
         data = pd.DataFrame()
-        l = len(self.ts[:,selection[0]])
+        l = len(self.TRPLs_ts[:,selection[0]])
 
         for i, s in enumerate(selection):
             if (i == 0):
                 how = 'right'        
-            elif (len(self.ts[:,s]) > l):
+            elif (len(self.TRPLs_ts[:,s]) > l):
                 how = 'right'
             else:
                 how = 'left'
             
             if (col_filenames):
-                data = data.join(pd.Series(self.ts[:,s]).rename("time: "+self.files[s]), how = how)
-                data = data.join(pd.Series(self.TRPLs_subsMean[:,s]).rename("trPL denoised: "+self.files[s]), how = how)
-                data = data.join(pd.Series(self.TRPLs_n[:,s]).rename("trPL normalised: "+self.files[s]), how = how)
-                data = data.join(pd.Series(self.TRPLs_raw[:,s]).rename("trPL raw: "+self.files[s]), how = how)
+                data = data.join(pd.Series(self.TRPLs_ts[:,s]).rename("time: "+self.TRPLs_files[s]), how = how)
+                data = data.join(pd.Series(self.TRPLs_subsMean[:,s]).rename("trPL denoised: "+self.TRPLs_files[s]), how = how)
+                data = data.join(pd.Series(self.TRPLs_n[:,s]).rename("trPL normalised: "+self.TRPLs_files[s]), how = how)
+                data = data.join(pd.Series(self.TRPLs_raw[:,s]).rename("trPL raw: "+self.TRPLs_files[s]), how = how)
             else:
-                data = data.join(pd.Series(self.ts[:,s]).rename("time"), how = how)
+                data = data.join(pd.Series(self.TRPLs_ts[:,s]).rename("time"), how = how)
                 data = data.join(pd.Series(self.TRPLs_subsMean[:,s]).rename("trPL denoised"), how = how)
                 data = data.join(pd.Series(self.TRPLs_n[:,s]).rename("trPL normalised"), how = how)
                 data = data.join(pd.Series(self.TRPLs_raw[:,s]).rename("trPL raw"), how = how)
@@ -414,7 +419,7 @@ class trPL_measurement_series:
             #         #data[colnames[j]] = pd.Series(array[:, selection].transpose()[i])
             # #print(elements)
 
-            l = len(self.ts[:,s])
+            l = len(self.TRPLs_ts[:,s])
 
         data.to_csv(filename, index=None, sep = sep)
         return data
@@ -431,7 +436,7 @@ class trPL_measurement_series:
         
         binsize: binsize in ns. 
         
-        tau_COUNT_APD: Value for the dead time of the APD, found on the Laser Components COUNT manual. 
+        tau_COUNT_APD: Value for the dead time of the APD, found on the Laser Components COUNT HySprint. 
             
         Returns
         -------
@@ -445,13 +450,13 @@ class trPL_measurement_series:
 
     def plot_trPL(self, selection = None, **kwargs):
         if selection == None:
-            selection = range(len(self.files))
+            selection = range(len(self.TRPLs_files))
         #Plot series
         fig, ax = plt.subplots(1,2, figsize = (kwargs.get("xplotsize", 20), kwargs.get("xplotsize", 10)))
 
         for i, (sPL) in enumerate(selection):
-                ax[0].scatter(1e6*(self.ts[:,sPL]), self.TRPLs_subsMean[:,sPL], label = self.sample[sPL]+" "+str(self.powers[sPL]), alpha = 1)
-                ax[1].scatter(1e6*(self.ts[:,sPL]), self.TRPLs_n[:,sPL], label = self.sample[sPL]+" "+str(self.powers[sPL]), alpha = 1)
+                ax[0].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_subsMean[:,sPL], label = self.sample[sPL]+" "+str(self.powers[sPL]), alpha = 1)
+                ax[1].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_n[:,sPL], label = self.sample[sPL]+" "+str(self.powers[sPL]), alpha = 1)
 
         axisTicks_fontsize = kwargs.get("axisTicks_fontsize", 20)
         axis_fontsize = kwargs.get("axis_fontsize", 25)
@@ -503,13 +508,13 @@ class trPL_measurement_series:
             return None
 
         if selection == None:
-            selection = range(len(self.files))
+            selection = range(len(self.TRPLs_files))
         #Plot series
         fig, ax = plt.subplots(1,2, figsize = (kwargs.get("xplotsize", 20), kwargs.get("xplotsize", 10)))
 
         for i, (sPL) in enumerate(selection):
-                ax[0].scatter(1e6*(self.ts[:,sPL]), self.TRPLs_n[:,sPL], label = self.files[sPL], alpha = 1)
-                ax[1].scatter(self.kT*np.log((self.densities[sPL][:-1]*self.densities[sPL][:-1])/(self.ni*self.ni)), self.diff_taus[sPL], label = self.files[sPL], alpha = 1)
+                ax[0].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_n[:,sPL], label = self.TRPLs_files[sPL], alpha = 1)
+                ax[1].scatter(self.kT*np.log((self.densities[sPL][:-1]*self.densities[sPL][:-1])/(self.ni*self.ni)), self.diff_taus[sPL], label = self.TRPLs_files[sPL], alpha = 1)
 
         axisTicks_fontsize = kwargs.get("axisTicks_fontsize", 20)
         axis_fontsize = kwargs.get("axis_fontsize", 25)
@@ -580,13 +585,13 @@ class trPL_measurement_series:
         
         """
         if selection == None:
-            selection = range(len(self.files))
+            selection = range(len(self.TRPLs_files))
 
         if n_exp == None:
             n_exp = [5 for i in selection]
 
         ns_raw = self.TRPLs_raw[:,selection].transpose()
-        time = self.ts[:,selection].transpose()
+        time = self.TRPLs_ts[:,selection].transpose()
 
         diff_taus = []
         densities2 = []
@@ -602,17 +607,17 @@ class trPL_measurement_series:
             p = [1]*(2*n_exp[i]+1)
             if (l2 == None):
                 #previous_ps, pcov = scipy.optimize.curve_fit(fitfunc, t[(pl >= 0)], np.log(pl[(pl >= 0)]), maxfev = 150000, p0 = p) 
-                self.fitnoise = self.noise[selection[i]]
+                self.fitnoise = self.TRPLs_noise[selection[i]]
                 previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t, (pl), maxfev = 150000, p0 = p) 
                 #np.exp(np.log(start = 1, stop = 1+len(t[t < 1e-9*l2[i]]))))#method = 'lm', loss)
                 fit = (self.fitfunc(t, *previous_ps))       
                 tau_diff = -1*(np.diff(t)/np.diff(np.log(fit)))
                 print("L2 is None")
             else:
-                self.fitnoise = self.noise[selection[i]]
+                self.fitnoise = self.TRPLs_noise[selection[i]]
                 previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t[(t < 1e-9*l2[i])], pl[(t < 1e-9*l2[i])], maxfev = 1500000, p0 = p)
                 fit = (self.fitfunc(t[t < 1e-9*l2[i]], *previous_ps))
-                fit_denoised = fit - self.noise[selection[i]] 
+                fit_denoised = fit - self.TRPLs_noise[selection[i]] 
                 tau_diff = -2*(np.diff(t[t < 1e-9*l2[i]])/np.diff(np.log(fit_denoised)))
 
             carrier_densities_fit = np.sqrt(fit_denoised/np.max(fit_denoised))*(self.n0s[selection[i]])
@@ -682,10 +687,10 @@ class trPL_measurement_series:
         
         """
         if selection == None:
-            selection = range(len(self.files))
+            selection = range(len(self.TRPLs_files))
 
         if (hasattr(self, 'densities')):
-            files_selection = [self.files[i] for i in selection]
+            files_selection = [self.TRPLs_files[i] for i in selection]
             times =  [self.time_fit[i] for i in selection]
             densities = [self.densities[i] for i in selection]
             tau_diffs = [self.diff_taus[i] for i in selection]
