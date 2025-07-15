@@ -125,18 +125,21 @@ class trPL_measurement_series:
 
         if(mode == "HySprint"):
             df = pd.read_csv(filepath, skiprows=8, header = None, encoding='latin-1', delimiter = '\t')
-            self.binsize = 1e-9*df.iloc[0].astype('float64')[0]
+            binsize_seconds = 1e-9*df.iloc[0].astype('float64')[0]
+            self.TRPL_binsize.append(binsize_seconds)
             TRPL = df.iloc[2:,0].to_numpy(dtype = None).astype('int')
         elif(mode == "auto"):
             df = pd.read_csv(filepath, delimiter = '\t')
             df = df.drop(df.columns[0:1], axis=1)
             t = 1e-12*df["bins [ps]"].to_numpy(dtype = None).astype('int')
-            self.binsize = t[1]-t[0]
+            binsize_seconds = t[1]-t[0]
+            self.TRPL_binsize.append(binsize_seconds)
             TRPL = df["counts [#]"].to_numpy(dtype = None).astype('int')
             t = np.transpose(t)
         elif(mode == "wannsee"):
             df = pd.read_csv(filepath, skiprows=11, header = None, on_bad_lines='skip')
-            self.binsize = 1e-12*(df.iloc[1, 0].astype('float64') - df.iloc[0, 0].astype('float64'))
+            binsize_seconds = 1e-12*(df.iloc[1, 0].astype('float64') - df.iloc[0, 0].astype('float64'))
+            self.TRPL_binsize.append(binsize_seconds)
             TRPL = df.iloc[0:,1].to_numpy(dtype = None).astype('int')
             t = 1e-12*(df.iloc[0:,0].to_numpy(dtype = None).astype('float64'))
 
@@ -152,7 +155,7 @@ class trPL_measurement_series:
             noise = np.mean(TRPL[:TRPL_denoise])
             
         TRPL_denoise = TRPL[:] - noise
-        TRPL_denoise = self.rate_calculation_function(TRPL_denoise, integration_time_seconds, self.binsize, reprate)
+        TRPL_denoise = self.rate_calculation_function(TRPL_denoise, integration_time_seconds, binsize_seconds, reprate)
         #TRPL = rate_calculation_function(TRPL, integration_time_seconds, binsize, reprate)
             
         #Normalize
@@ -160,7 +163,7 @@ class trPL_measurement_series:
         
         if (retime):
             if(mode == "HySprint"):
-                t_TRPL = self.binsize*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
+                t_TRPL = self.TRPL_binsize*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
             elif(mode == "auto" or mode == "wannsee"):
                 t_TRPL = t-t[np.argmax(TRPL)]
         else:
