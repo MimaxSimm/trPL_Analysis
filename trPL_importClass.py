@@ -214,6 +214,7 @@ class trPL_measurement_series:
             self.TRPL_cps = []
             self.TRPL_PLs = []
             self.TRPL_measNum = []
+            self.TRPL_binsize = []
         else:
             print("Manual input of params")
 
