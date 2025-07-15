@@ -7,16 +7,17 @@ import math
 import scipy
 
 class trPL_measurement_series:
-    def __init__(self, folderpath, BG, importPL = False, importSPV = False, thickness = None, alpha = None, denoise = False, retime = True, mode = "HySprint", Nc = 2e18, Nv = 2e18, kT = 27.7*1e-3,  lambda_laser = 705e-9, spot_diameter =  2.72e-04, BD_ratio = 0.21, which = None):
+    def __init__(self, TRPL_folderpath, BG, importPL = False, importSPV = False, thickness = None, alpha = None, TRPL_denoise = False, retime = True, mode = "HySprint", Nc = 2e18, Nv = 2e18, kT = 27.7*1e-3,  lambda_laser = 705e-9, spot_diameter =  2.72e-04, BD_ratio = 0.21, which = None):
        
         self.lambda_laser = lambda_laser
-        print("Lambda Laser set to: {:2e}".format(lambda_laser))
+        print("Lambda Laser set to: {:2e}".format(self.lambda_laser))
         self.spot_diameter = spot_diameter #m (measured)
-        print("Spot diameter set to: {:2e}".format(spot_diameter))
+        print("Spot diameter set to: {:2e}".format(self.spot_diameter))
         self.spot_area = math.pi*(spot_diameter/2)**2 #m2
         #Film params
         self.thickness = thickness
-        print("Film thickness set to: {:2e}".format(thickness))
+        print("Film thickness set to: {:2e}".format(self.thickness))
+        self.TRPL_folderpath = TRPL_folderpath
 
         ## TODO: Generation profile calculation ##
         #if not(thickness == None):  
@@ -28,7 +29,7 @@ class trPL_measurement_series:
             self.BD_ratio = BD_ratio
         else:
             self.BD_ratio = 1.0
-        print("Beam dump ratio set to: {:2e}".format(BD_ratio))
+        print("Beam dump ratio set to: {:2e}".format(self.BD_ratio))
 
         #Physics
         self.BG = BG
@@ -39,9 +40,11 @@ class trPL_measurement_series:
         self.hc = 1.98645E-25
         self.ni = np.sqrt(self.Nc*self.Nv*np.exp(-self.BG/(self.kT)))
         
-        self.denoise = denoise
-        self.retime = retime
         self.mode = mode
+
+        self.TRPL_denoise = TRPL_denoise
+        self.retime = retime 
+        
 
         self.which = which
 
@@ -49,24 +52,23 @@ class trPL_measurement_series:
         self.S_colors = ['#33d1a3', '#04d288', '#098e68', '#046a55', '#054639', 'black']
         self.B2_colors = ['#abc6e5', '#81ADC8', '#62769c', '#465970', '#303d4d', 'black']  
 
-        
-        
-        if (importSPV and importPL):
-            self.TRPLs_files, self.TRPLs_ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.TRPLs_noise = self.TRPL_folder_read()
-            self.calculate_N0s()
-
-
-            
         if (importPL):
+            self.TRPL_reprates_Hz = []
+            self.TRPL_powers = []
+            self.TRPL_integration_times_seconds = []
             self.TRPLs_files, self.TRPLs_ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.TRPLs_noise = self.TRPL_folder_read()
             self.calculate_N0s()
+    
+        if (importSPV):
+            self.SPV_reprates_Hz = []
+            self.SPVs_files, self.SPVs= self.SPV_folder_read()
         
 
     def calculate_N0s(self):
         photon_energy = self.hc / self.lambda_laser #J
         n0s = []
         fluences = []
-        for p, rep in zip(self.powers, self.reprates_Hz):
+        for p, rep in zip(self.TRPL_powers, self.TRPL_reprates_Hz):
             power_per_pulse = p/rep #J
             PowerDensity_per_pulse = power_per_pulse/self.spot_area
             photons_per_pulse = PowerDensity_per_pulse/photon_energy #m-2
@@ -96,7 +98,7 @@ class trPL_measurement_series:
 
     #     self.Gs = G_total
 
-    def TRPL_readout_function(self, filepath, integration_time_seconds, reprate, denoise = False, retime = False, mode = "HySprint"):
+    def TRPL_readout_function(self, filepath, integration_time_seconds, reprate, TRPL_denoise = False, retime = False, mode = "HySprint"):
         """
         Imports a TRPL data file.  
 
@@ -108,7 +110,7 @@ class trPL_measurement_series:
         
         reprate: repetition rate of all the experiments. 
         
-        denoise: denoise values? True: Automatic denoising (careful, check the procedure). False: No denoising. 
+        TRPL_denoise: TRPL_denoise values? True: Automatic denoising (careful, check the procedure). False: No denoising. 
                                 Value: The value is removed from the counts.
                                 
         
@@ -140,14 +142,14 @@ class trPL_measurement_series:
 
         TRPL = np.transpose(TRPL)
         #Remove Uniform noise
-        if(not(denoise)):
+        if(not(TRPL_denoise)):
             noise = 0
             #noise = np.mean(TRPL[0][(np.argmax(TRPL[0][:])-noise_start_i):(np.argmax(TRPL[0][:])-noise_end_i)])
-        elif(denoise < 0):  
-            noise = np.mean(np.trim_zeros(TRPL, trim='b')[denoise:]) #takes the zeros out of the end of the data
-            #noise = np.mean(TRPL[denoise:])
-        elif(denoise > 0):
-            noise = np.mean(TRPL[:denoise])
+        elif(TRPL_denoise < 0):  
+            noise = np.mean(np.trim_zeros(TRPL, trim='b')[TRPL_denoise:]) #takes the zeros out of the end of the data
+            #noise = np.mean(TRPL[TRPL_denoise:])
+        elif(TRPL_denoise > 0):
+            noise = np.mean(TRPL[:TRPL_denoise])
             
         TRPL_denoise = TRPL[:] - noise
         TRPL_denoise = self.rate_calculation_function(TRPL_denoise, integration_time_seconds, self.binsize, reprate)
@@ -181,7 +183,7 @@ class trPL_measurement_series:
         
         reprate_Hz: repetition rate of all the experiments. 
         
-        denoise: denoise values? True: Automatic denoising (careful, check the procedure). False: No denoising. 
+        TRPL_denoise: TRPL_denoise values? True: Automatic denoising (careful, check the procedure). False: No denoising. 
                                 Value: The value is removed from the counts.
                                 
         
@@ -195,54 +197,59 @@ class trPL_measurement_series:
         """
         
         if(self.mode == "wannsee"):
-            files = [f for f in os.listdir(self.folderpath) if (isfile(join(self.folderpath, f)) and f.endswith(".csv") and (not(f.startswith("._"))))]
+            files = [f for f in os.listdir(self.TRPL_folderpath) if (isfile(join(self.TRPL_folderpath, f)) and f.endswith(".csv") and (not(f.startswith("._"))) and not(f.endswith(".Wfm.csv")))]
             files.sort()
         else:
-            files = [f for f in os.listdir(self.folderpath) if (isfile(join(self.folderpath, f)) and f.endswith(".dat") and (not(f.startswith("._"))))]
+            files = [f for f in os.listdir(self.TRPL_folderpath) if (isfile(join(self.TRPL_folderpath, f)) and f.endswith(".dat") and (not(f.startswith("._"))))]
             files.sort()
+
+        print(files)
         
-        if ((self.reprates_Hz == []) or (self.integration_times_seconds == []) or (self.powers == [])):
-            self.sample = []
-            self.NDs = []
-            self.cps = []
-            self.PLs = []
+        if ((self.TRPL_reprates_Hz == []) or (self.TRPL_integration_times_seconds == []) or (self.TRPL_powers == [])):
+            self.TRPL_sample = []
+            self.TRPL_NDs = []
+            self.TRPL_cps = []
+            self.TRPL_PLs = []
+            self.TRPL_measNum = []
         else:
             print("Manual input of params")
+
 
         fpar = os.path.splitext(files[0])[0]
         meas_ps = fpar.split("_")
         if(self.which == "LPtrPL"):
-            self.sample.append(meas_ps[0])
-            self.reprates_Hz.append(float(1e3*float(meas_ps[1][:-3])))
-            self.NDs.append(meas_ps[3])
-            self.cps.append(float(meas_ps[5][:-3]))
-            self.integration_times_seconds.append(float(meas_ps[1][:-1]))
-            self.PLs.append(1e-6*float(meas_ps[4][3:-2]))
+            self.TRPL_sample.append(meas_ps[0])
+            self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[1][:-3])))
+            self.TRPL_NDs.append(meas_ps[3])
+            self.TRPL_cps.append(float(meas_ps[5][:-3]))
+            self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
+            self.TRPL_PLs.append(1e-6*float(meas_ps[4][3:-2]))
         else:
             if(self.mode == "HySprint"):
-                self.sample.append(meas_ps[0])
+                self.TRPL_sample.append(meas_ps[0])
                 meas_ps = meas_ps[1].split("-")
-                self.reprates_Hz.append(float(1e3*float(meas_ps[0][:-3])))
-                self.NDs.append(meas_ps[1])
-                self.powers.append(float(1e-6*float(meas_ps[2][:-2])))
-                self.integration_times_seconds.append(float(meas_ps[3][:-1]))
+                self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[0][:-3])))
+                self.TRPL_NDs.append(meas_ps[1])
+                self.TRPL_powers.append(float(1e-6*float(meas_ps[2][:-2])))
+                self.TRPL_integration_times_seconds.append(float(meas_ps[3][:-1]))
             elif(self.mode == "wannsee"):
-                print(meas_ps[0].split("-"))
                 meas_ps = meas_ps[0].split("-")
-                self.sample.append(meas_ps[2])
-                self.reprates_Hz.append(float(1e3*float(meas_ps[-1][:-3])))
-                self.NDs.append(meas_ps[-2])
-                self.powers.append(1)
-                self.integration_times_seconds.append(float(meas_ps[3][:-1]))
+                print(meas_ps)
+                self.TRPL_measNum.append(meas_ps[0])
+                self.TRPL_sample.append(meas_ps[2])
+                self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[-1][:-3])))
+                self.TRPL_NDs.append(meas_ps[-2])
+                self.TRPL_powers.append(1)
+                self.TRPL_integration_times_seconds.append(float(meas_ps[3][:-1]))
             else:
-                self.sample.append(meas_ps[0])
-                self.reprates_Hz.append(float(1e3*float(meas_ps[2][:-3])))
-                self.NDs.append(meas_ps[3])
-                self.cps.append(float(meas_ps[4][:-3]))
-                self.powers.append(float(1e-6*float(meas_ps[5][:-2])))
-                self.integration_times_seconds.append(float(meas_ps[1][:-1]))
+                self.TRPL_sample.append(meas_ps[0])
+                self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[2][:-3])))
+                self.TRPL_NDs.append(meas_ps[3])
+                self.TRPL_cps.append(float(meas_ps[4][:-3]))
+                self.TRPL_powers.append(float(1e-6*float(meas_ps[5][:-2])))
+                self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
         
-        ts, TRPLs_n, TRPL_subsMean, TRPL_raw, noise = self.TRPL_readout_function(join(self.folderpath, files[0]), self.integration_times_seconds[0], self.reprates_Hz[0], self.denoise, self.retime, self.mode)
+        ts, TRPLs_n, TRPL_subsMean, TRPL_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, files[0]), self.TRPL_integration_times_seconds[0], self.TRPL_reprates_Hz[0], self.TRPL_denoise, self.retime, self.mode)
         
         Noise = [noise]
         
@@ -252,43 +259,44 @@ class trPL_measurement_series:
             fpar = os.path.splitext(f)[0]
             meas_ps = fpar.split("_")
             if(self.which == "LPtrPL"):
-                self.sample.append(meas_ps[0])
-                self.reprates_Hz.append(float(1e3*float(meas_ps[1][:-3])))
-                self.NDs.append(meas_ps[3])
-                self.cps.append(float(meas_ps[5][:-3]))
-                self.integration_times_seconds.append(float(meas_ps[1][:-1]))
-                self.PLs.append(1e-6*float(meas_ps[4][3:-2]))
+                self.TRPL_sample.append(meas_ps[0])
+                self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[1][:-3])))
+                self.TRPL_NDs.append(meas_ps[3])
+                self.TRPL_cps.append(float(meas_ps[5][:-3]))
+                self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
+                self.TRPL_PLs.append(1e-6*float(meas_ps[4][3:-2]))
             else:
                 if(self.mode == "HySprint"):
-                    self.sample.append(meas_ps[0])
+                    self.TRPL_sample.append(meas_ps[0])
                     meas_ps = meas_ps[1].split("-")
-                    self.reprates_Hz.append(float(1e3*float(meas_ps[0][:-3])))
-                    self.NDs.append(meas_ps[1])
-                    self.powers.append(float(1e-6*float(meas_ps[2][:-2])))
-                    self.integration_times_seconds.append(float(meas_ps[3][:-1]))
+                    self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[0][:-3])))
+                    self.TRPL_NDs.append(meas_ps[1])
+                    self.TRPL_powers.append(float(1e-6*float(meas_ps[2][:-2])))
+                    self.TRPL_integration_times_seconds.append(float(meas_ps[3][:-1]))
                 elif(self.mode == "wannsee"):
                     meas_ps = meas_ps[0].split("-")
-                    self.sample.append(meas_ps[2])
-                    self.reprates_Hz.append(float(1e3*float(meas_ps[-1][:-3])))
-                    self.NDs.append(meas_ps[-2])
-                    self.powers.append(1)
-                    self.integration_times_seconds.append(float(meas_ps[3][:-1]))
+                    print(meas_ps)
+                    self.TRPL_measNum.append(meas_ps[0])
+                    self.TRPL_sample.append(meas_ps[2])
+                    self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[-1][:-3])))
+                    self.TRPL_NDs.append(meas_ps[-2])
+                    self.TRPL_powers.append(1)
+                    self.TRPL_integration_times_seconds.append(float(meas_ps[3][:-1]))
                 else:
-                    self.sample.append(meas_ps[0])
-                    self.reprates_Hz.append(float(1e3*float(meas_ps[2][:-3])))
-                    self.NDs.append(meas_ps[3])
-                    self.cps.append(float(meas_ps[4][:-3]))
-                    self.powers.append(float(1e-6*float(meas_ps[5][:-2])))
-                    self.integration_times_seconds.append(float(meas_ps[1][:-1]))
+                    self.TRPL_sample.append(meas_ps[0])
+                    self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[2][:-3])))
+                    self.TRPL_NDs.append(meas_ps[3])
+                    self.TRPL_cps.append(float(meas_ps[4][:-3]))
+                    self.TRPL_powers.append(float(1e-6*float(meas_ps[5][:-2])))
+                    self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
         
-            t, trpl_n, trpl_subsMean, trpl_raw, noise = self.TRPL_readout_function(join(self.folderpath, f), self.integration_times_seconds[i], self.reprates_Hz[i], self.denoise, self.retime, self.mode)
+            t, trpl_n, trpl_subsMean, trpl_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, f), self.TRPL_integration_times_seconds[i], self.TRPL_reprates_Hz[i], self.TRPL_denoise, self.retime, self.mode)
             
             ts = np.c_[ts, t]
             TRPLs_n = np.c_[TRPLs_n, trpl_n]
             TRPL_subsMean = np.c_[TRPL_subsMean, trpl_subsMean]
             TRPL_raw = np.c_[TRPL_raw, trpl_raw]
             Noise.append(noise)
-
        
         return files, ts, TRPLs_n, TRPL_subsMean, TRPL_raw, Noise
 
@@ -315,49 +323,68 @@ class trPL_measurement_series:
         
         return rate_measured
 
-    def SPV_folder_read(self, folderpath, setup = "Dittrich"):
-
-        if (setup == "Dittrich"):
-            files = [f for f in os.listdir(folderpath) if (isfile(join(folderpath, f)) and f.endswith("txt"))]
-        elif(setup == "Wannsee"):
-            files = [f for f in os.listdir(folderpath) if (isfile(join(folderpath, f)) and f.endswith(".Wfm.csv"))]
+    def SPV_folder_read(self, setup = "Dittrich"):
+        if(self.mode == "wannsee"):
+            setup = "wannsee"
+            files = [f for f in os.listdir(self.TRPL_folderpath) if (isfile(join(self.TRPL_folderpath, f)) and f.endswith(".Wfm.csv"))]
+        elif(setup == "Dittrich"):
+            files = [f for f in os.listdir(self.TRPL_folderpath) if (isfile(join(self.TRPL_folderpath, f)) and f.endswith("txt"))]
         
         files.sort()
+
+        if (self.SPV_reprates_Hz == []):
+            self.SPV_NDs = []
+            self.SPV_samples = []
+            self.SPV_oscilloRecord = []
+            self.SPV_measNum = []
         
-        dfs = import_SPV(join(folderpath, files[0]), setup = setup)
-        #SPVs = SPVs.transpose()
+
+        fpar = os.path.splitext(files[0])[0]
+        meas_ps = fpar.split("_")
+        print(meas_ps)
+        print(meas_ps[0][-1])
+        if(self.mode == "wannsee"):
+            self.SPV_oscilloRecord.append((meas_ps[0][-1]))
+            self.SPV_measNum.append((meas_ps[0][:-1]))
+            self.SPV_NDs.append(meas_ps[2])
+            self.SPV_samples.append(meas_ps[1])
+        else:
+            print("Not incoding sample params")
         
+        dfs = self.import_SPV(join(self.TRPL_folderpath, files[0]), setup = setup)
+
         for i, f in enumerate(files):
             if(i == 0):
                 continue
-            
-            df = import_SPV(join(folderpath, f), setup = setup)
-            
-            #ts = np.c_[ts, t]
+            df = self.import_SPV(join(self.TRPL_folderpath, f), setup = setup)
             dfs = pd.concat([dfs, df], axis = 1)
-            #SPVs = SPVs.set_index(spv.index).join(spv.set_index(spv.index), lsuffix = '_'+str(i-1), rsuffix = '_'+str(i))
-            #SPVs = np.c_[SPVs, spv]
-            #SPVs = SPVs.join(spv)
+
+            fpar = os.path.splitext(f)[0]
+            meas_ps = fpar.split("_")
+            print(meas_ps)
+            print(meas_ps[0][-1])
+            if(self.mode == "wannsee"):
+                self.SPV_oscilloRecord.append((meas_ps[0][-1]))
+                self.SPV_measNum.append((meas_ps[0][:-1]))
+                self.SPV_NDs.append(meas_ps[2])
+                self.SPV_samples.append(meas_ps[1])
+            else:
+                print("Not incoding sample params")
             
+
+        
         return files, dfs
 
-    def import_SPV(self, filepath, setup):
-        
+    def import_SPV(self, filepath, setup = None):
         if (setup == "Dittrich"):
             df = pd.read_csv(filepath, skiprows=0, sep = "\t", comment='#')
             names = [os.path.basename(filepath)[:-4]+": "+str(n) for n in df.columns]
             df.columns = names
-        elif(setup == "Wannsee"):
+        elif(setup == "wannsee"):
             df = pd.read_csv(filepath, skiprows=0, header = None, sep = ",")
             cols = ["time [s]", "voltage [V]"]
             names = [os.path.basename(filepath)+": "+cols[n] for n in range(len(df.columns))]
             df.columns = names
-        
-        #t = df.iloc[:,0].to_numpy().astype("float64")
-        #SPVs = df.iloc[:,0].to_numpy().astype("float64")
-
-        #print(df)
-    
         return df
 
     def TRPL_savedata(self, filename, selection = None,  sep=',', col_filenames = True):
@@ -455,8 +482,8 @@ class trPL_measurement_series:
         fig, ax = plt.subplots(1,2, figsize = (kwargs.get("xplotsize", 20), kwargs.get("xplotsize", 10)))
 
         for i, (sPL) in enumerate(selection):
-                ax[0].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_subsMean[:,sPL], label = self.sample[sPL]+" "+str(self.powers[sPL]), alpha = 1)
-                ax[1].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_n[:,sPL], label = self.sample[sPL]+" "+str(self.powers[sPL]), alpha = 1)
+                ax[0].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_subsMean[:,sPL], label = self.TRPL_sample[sPL]+" "+str(self.TRPL_powers[sPL]), alpha = 1)
+                ax[1].scatter(1e6*(self.TRPLs_ts[:,sPL]), self.TRPLs_n[:,sPL], label = self.TRPL_sample[sPL]+" "+str(self.TRPL_powers[sPL]), alpha = 1)
 
         axisTicks_fontsize = kwargs.get("axisTicks_fontsize", 20)
         axis_fontsize = kwargs.get("axis_fontsize", 25)
