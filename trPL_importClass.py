@@ -234,7 +234,7 @@ class trPL_measurement_series:
                 self.TRPL_integration_times_seconds.append(float(meas_ps[3][:-1]))
             elif(self.mode == "wannsee"):
                 meas_ps = meas_ps[0].split("-")
-                print(meas_ps)
+                # print(meas_ps)
                 self.TRPL_measNum.append(meas_ps[0])
                 self.TRPL_sample.append(meas_ps[2])
                 self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[-1][:-3])))
@@ -275,7 +275,7 @@ class trPL_measurement_series:
                     self.TRPL_integration_times_seconds.append(float(meas_ps[3][:-1]))
                 elif(self.mode == "wannsee"):
                     meas_ps = meas_ps[0].split("-")
-                    print(meas_ps)
+                    # print(meas_ps)
                     self.TRPL_measNum.append(meas_ps[0])
                     self.TRPL_sample.append(meas_ps[2])
                     self.TRPL_reprates_Hz.append(float(1e3*float(meas_ps[-1][:-3])))
@@ -341,8 +341,8 @@ class trPL_measurement_series:
 
         fpar = os.path.splitext(files[0])[0]
         meas_ps = fpar.split("_")
-        print(meas_ps)
-        print(meas_ps[0][-1])
+        # print(meas_ps)
+        # print(meas_ps[0][-1])
         if(self.mode == "wannsee"):
             self.SPV_oscilloRecord.append((meas_ps[0][-1]))
             self.SPV_measNum.append((meas_ps[0][:-1]))
@@ -361,8 +361,8 @@ class trPL_measurement_series:
 
             fpar = os.path.splitext(f)[0]
             meas_ps = fpar.split("_")
-            print(meas_ps)
-            print(meas_ps[0][-1])
+            # print(meas_ps)
+            # print(meas_ps[0][-1])
             if(self.mode == "wannsee"):
                 self.SPV_oscilloRecord.append((meas_ps[0][-1]))
                 self.SPV_measNum.append((meas_ps[0][:-1]))
