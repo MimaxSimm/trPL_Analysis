@@ -163,12 +163,12 @@ class trPL_measurement_series:
         
         if (retime):
             if(mode == "HySprint"):
-                t_TRPL = self.TRPL_binsize*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
+                t_TRPL = binsize_seconds*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
             elif(mode == "auto" or mode == "wannsee"):
                 t_TRPL = t-t[np.argmax(TRPL)]
         else:
             if(mode == "HySprint"):
-                t_TRPL = binsize*(np.arange(len(TRPL_n)))
+                t_TRPL = binsize_seconds*(np.arange(len(TRPL_n)))
             else:
                 t_TRPL = t
 
