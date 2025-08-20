@@ -352,7 +352,7 @@ class trPL_measurement_series:
             self.SPV_NDs.append(meas_ps[2])
             self.SPV_samples.append(meas_ps[1])
         else:
-            print("Not incoding sample params")
+            print("Not incoding sample params for SPV")
         
         dfs = self.import_SPV(join(self.TRPL_folderpath, files[0]), setup = setup)
 
