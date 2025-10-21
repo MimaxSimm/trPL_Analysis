@@ -44,8 +44,6 @@ class trPL_measurement_series:
 
         self.TRPL_denoise = TRPL_denoise
         self.retime = retime 
-        
-
         self.which = which
 
         self.Q2_colors = ['#ffc67c', '#f98b2c', '#F05D23', '#c71d06', '#942a00', 'black'] 
