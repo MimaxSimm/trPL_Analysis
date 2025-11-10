@@ -25,7 +25,7 @@ class trPL_measurement_series:
         #elif not(alpha == None):
          #   self.
         
-        if (mode == "HySprint"):
+        if (mode == "HySprint" or mode == "auto"):
             self.BD_ratio = BD_ratio
         else:
             self.BD_ratio = 1.0
@@ -798,5 +798,6 @@ class trPL_measurement_series:
             numerator = numerator + params[i]*(x**i)
             denum = denum + params[int(len(params)/2)+i]*(x**i)
         
+
 
         return numerator/denum
