@@ -59,7 +59,7 @@ class trPL_measurement_series:
     
         if (importSPV):
             self.SPV_reprates_Hz = []
-            self.SPVs_files, self.SPVs= self.SPV_folder_read()
+            self.SPVs_files, self.SPVs_total, self.SPVs_ts, self.SPVs_Vs, self.SPVs_Vs_backCorr, self.SPVs_lambdas = self.SPV_folder_read()
         
 
     def calculate_N0s(self):
@@ -339,39 +339,57 @@ class trPL_measurement_series:
 
         fpar = os.path.splitext(files[0])[0]
         meas_ps = fpar.split("_")
-        print(meas_ps)
-        print(meas_ps[0][-1])
+        # print(meas_ps)
+        # print(meas_ps[0][-1])
         if(self.mode == "wannsee"):
             self.SPV_oscilloRecord.append((meas_ps[0][-1]))
             self.SPV_measNum.append((meas_ps[0][:-1]))
             self.SPV_NDs.append(meas_ps[2])
             self.SPV_samples.append(meas_ps[1])
         else:
-            print("Not incoding sample params")
+            print("Not incoding sample params for SPV")
         
         dfs = self.import_SPV(join(self.TRPL_folderpath, files[0]), setup = setup)
 
+        SPVs_t = np.zeros((len(files), len(dfs)))
+        SPVs_t[0] = dfs.iloc[:,0].to_numpy()
+        SPVs_V = np.zeros((len(files), (len(dfs.columns)-1), len(dfs)))
+        SPVs_V_bC = np.zeros((len(files), (len(dfs.columns)-1), len(dfs)))
+        SPVs_V[0] = dfs.iloc[:,1:].to_numpy().T
+
+        for i, v_i in enumerate(SPVs_V[0]):
+            SPVs_V_bC[0][i] = v_i - np.average(v_i[:10])
+
+        SPVs_lambdas = np.zeros((len(files), (len(dfs.columns)-1)))
+        SPVs_lambdas[0] = np.array([float(s.split(" ")[1]) for s in dfs.iloc[0,1:].index])
+        
         for i, f in enumerate(files):
             if(i == 0):
                 continue
             df = self.import_SPV(join(self.TRPL_folderpath, f), setup = setup)
             dfs = pd.concat([dfs, df], axis = 1)
 
+            SPVs_t[i] = df.iloc[:,0].to_numpy()
+            SPVs_V[i] = df.iloc[:,1:].to_numpy().T
+
+            for j, v_j in enumerate(SPVs_V[i]):
+                SPVs_V_bC[i][j] = v_j - np.average(v_j[:10])
+
+            SPVs_lambdas[i] = np.array([float(s.split(" ")[1]) for s in df.iloc[0,1:].index])
+
             fpar = os.path.splitext(f)[0]
             meas_ps = fpar.split("_")
-            print(meas_ps)
-            print(meas_ps[0][-1])
+            # print(meas_ps)
+            # print(meas_ps[0][-1])
             if(self.mode == "wannsee"):
                 self.SPV_oscilloRecord.append((meas_ps[0][-1]))
                 self.SPV_measNum.append((meas_ps[0][:-1]))
                 self.SPV_NDs.append(meas_ps[2])
                 self.SPV_samples.append(meas_ps[1])
             else:
-                print("Not incoding sample params")
+                print("Not incoding sample params, setup = Thomas Dittrich")
             
-
-        
-        return files, dfs
+        return files, dfs, SPVs_t, SPVs_V, SPVs_V_bC, SPVs_lambdas
 
     def import_SPV(self, filepath, setup = None):
         if (setup == "Dittrich"):
@@ -793,5 +811,6 @@ class trPL_measurement_series:
             numerator = numerator + params[i]*(x**i)
             denum = denum + params[int(len(params)/2)+i]*(x**i)
         
+
 
         return numerator/denum
