@@ -68,12 +68,12 @@ class trPL_measurement_series:
         n0s = []
         fluences = []
         for p, rep in zip(self.TRPL_powers, self.TRPL_reprates_Hz):
-            power_per_pulse = p/rep #J
+            power_per_pulse = p*self.BD_ratio/rep #J
             PowerDensity_per_pulse = power_per_pulse/self.spot_area
             photons_per_pulse = PowerDensity_per_pulse/photon_energy #m-2
-            fluences.append(photons_per_pulse)
+            fluences.append(PowerDensity_per_pulse)
             pump_carrierDensity = photons_per_pulse/self.thickness #m-3
-            pump_carrierDensity_cm = 1e-6*pump_carrierDensity*self.BD_ratio #cm-3 (includes the beamdump ratio)
+            pump_carrierDensity_cm = 1e-6*pump_carrierDensity #cm-3 (includes the beamdump ratio)
             n0s.append(pump_carrierDensity_cm)
 
         self.n0s = np.array(n0s)
@@ -801,3 +801,4 @@ class trPL_measurement_series:
 
 
         return numerator/denum
+
