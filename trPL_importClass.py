@@ -657,7 +657,7 @@ class trPL_measurement_series:
             ax[0, i].scatter(1e9*t, pl, marker = 'x')
             ax[0, i].plot(1e9*t[:len(fit)], (fit), color = 'orange')
             ax[0, i].set_yscale("log")
-            ax[0, i].set_xlim([min(1e9*t), l2[i]*2])
+            ax[0, i].set_xlim([-0.05*l2[i] , l2[i]*2])
             ax[0, i].set_xlabel("time [ns]")
             ax[0, i].set_ylabel("PL counts [#]")
 
@@ -801,4 +801,5 @@ class trPL_measurement_series:
 
 
         return numerator/denum
+
 
