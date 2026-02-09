@@ -144,6 +144,7 @@ class trPL_measurement_series:
             TRPL = df.iloc[0:,1].to_numpy(dtype = None).astype('int')
             t = 1e-12*(df.iloc[0:,0].to_numpy(dtype = None).astype('float64'))
         elif(mode == "PicoQuant-Microscope"):
+            print("Here2")
             df =  pd.read_csv(filepath, skiprows=3, header = None, encoding='latin-1', delimiter = '\t')
             binsize_seconds = df.iloc[1].astype('float64')[0]
             self.TRPL_binsize.append(binsize_seconds)
@@ -172,6 +173,7 @@ class trPL_measurement_series:
             if(mode == "HySprint"):
                 t_TRPL = binsize_seconds*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
             elif(mode == "auto" or mode == "wannsee" or mode == "PicoQuant-Microscope"):
+                print("Here")
                 t_TRPL = t-t[np.argmax(TRPL)]
         else:
             if(mode == "HySprint"):
@@ -223,6 +225,7 @@ class trPL_measurement_series:
             self.TRPL_measNum = []
             self.TRPL_binsize = []
         else:
+            self.TRPL_binsize = []
             print("Manual input of params")
 
 
@@ -260,7 +263,7 @@ class trPL_measurement_series:
                 self.TRPL_powers.append(float(1e-6*float(meas_ps[5][:-2])))
                 self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
             else:
-                print("Not encoding samples")
+                print("Not encoding sample names, numbers nor NDs for TRPL")
 
         
         ts, TRPLs_n, TRPL_subsMean, TRPL_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, files[0]), self.TRPL_integration_times_seconds[0], self.TRPL_reprates_Hz[0], self.TRPL_denoise, self.retime, self.mode)
@@ -602,7 +605,7 @@ class trPL_measurement_series:
 
         return None
 
-    def fit_difflifetimes(self, selection = None, n_exp = None, l2 = None):
+    def fit_difflifetimes(self, selection = None, n_params = None, l2 = None, fit_function = "multi_exponential"):
         """
         Calculates differential lifetime values, given a raw TRPL table, using a arbritrary amount of exponentials to fit the data.
 
@@ -628,8 +631,8 @@ class trPL_measurement_series:
         if selection == None:
             selection = range(len(self.TRPLs_files))
 
-        if n_exp == None:
-            n_exp = [5 for i in selection]
+        if n_params == None:
+            n_params = [5 for i in selection]
 
         ns_raw = self.TRPLs_raw[:,selection].transpose()
         time = self.TRPLs_ts[:,selection].transpose()
@@ -637,7 +640,7 @@ class trPL_measurement_series:
         diff_taus = []
         densities2 = []
         time_fit = []
-        print("Number of exponentials for fit used is = "+str(n_exp)+"\n")
+        print("Number of exponentials for fit used is = "+str(n_params)+"\n")
         
         f, ax = plt.subplots(3, len(selection), figsize=(25,12))
         for i in range(len(selection)):
@@ -645,22 +648,34 @@ class trPL_measurement_series:
             t = time[i, (time[i,:] > 0)]
             pl = ns_raw[i, (time[i,:] > 0)]
             #initial guess for fitting
-            p = [1]*(2*n_exp[i]+1)
+            if (fit_function == "multi_exponential"):
+                p = [1]*(2*n_params[i]+1)
+            elif (fit_function == "rational"):
+                p = [1]*(2*n_params[i])
+
             if (l2 == None):
-                #previous_ps, pcov = scipy.optimize.curve_fit(fitfunc, t[(pl >= 0)], np.log(pl[(pl >= 0)]), maxfev = 150000, p0 = p) 
-                self.fitnoise = self.TRPLs_noise[selection[i]]
-                previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t, (pl), maxfev = 150000, p0 = p) 
-                #np.exp(np.log(start = 1, stop = 1+len(t[t < 1e-9*l2[i]]))))#method = 'lm', loss)
-                fit = (self.fitfunc(t, *previous_ps))       
+                if (fit_function == "multi_exponential"):
+                    self.fitnoise = self.TRPLs_noise[selection[i]]
+                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t, (pl), maxfev = 150000, p0 = p) 
+                    #np.exp(np.log(start = 1, stop = 1+len(t[t < 1e-9*l2[i]]))))#method = 'lm', loss)
+                    fit = (self.fitfunc(t, *previous_ps))
+                elif (fit_function == "rational"):
+                    self.fitnoise = self.TRPLs_noise[selection[i]]
+                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t, np.log(pl), maxfev = 150000, p0 = p)
+                    fit = np.exp(self.fitfunc2(t, *previous_ps))
                 tau_diff = -1*(np.diff(t)/np.diff(np.log(fit)))
                 print("L2 is None")
             else:
                 self.fitnoise = self.TRPLs_noise[selection[i]]
-                previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t[(t < 1e-9*l2[i])], pl[(t < 1e-9*l2[i])], maxfev = 1500000, p0 = p)
-                fit = (self.fitfunc(t[t < 1e-9*l2[i]], *previous_ps))
-                fit_denoised = fit - self.TRPLs_noise[selection[i]] 
+                if (fit_function == "multi_exponential"):
+                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t[(t < 1e-9*l2[i])], pl[(t < 1e-9*l2[i])], maxfev = 1500000, p0 = p)
+                    fit = (self.fitfunc(t[t < 1e-9*l2[i]], *previous_ps))
+                    fit_denoised = fit - self.TRPLs_noise[selection[i]] 
+                elif (fit_function == "rational"):
+                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[(t < 1e-9*l2[i])], np.log(pl[(t < 1e-9*l2[i])]), maxfev = 1500000, p0 = p)
+                    fit = np.exp(self.fitfunc2(t[t < 1e-9*l2[i]], *previous_ps))
+                    fit_denoised = fit - self.TRPLs_noise[selection[i]]
                 tau_diff = -2*(np.diff(t[t < 1e-9*l2[i]])/np.diff(np.log(fit_denoised)))
-                print(tau_diff)
 
             carrier_densities_fit = np.sqrt(fit_denoised/np.max(fit_denoised))*(self.n0s[selection[i]])
             print('{:.2e}'.format(self.n0s[selection[i]]))
@@ -797,22 +812,52 @@ class trPL_measurement_series:
                 
         return (s+self.fitnoise)
 
-    def fitfunc2(self, x, *args):
+    def fitfunc2(self, x, *params):
+        """
+        Rational polynomial model (polynomial / polynomial) of equal degree.
 
-        params = np.array([arg for arg in args])
+        Parameters
+        ----------
+        x : array_like
+            Evaluation points.
+        *args : float
+            Coefficients for numerator and denominator.
+            The number of parameters must be even: len(args) = 2*(n+1).
 
-        if ((len(params) < 2) or (len(params) > 20)):
-                print("Number of params in fitfunc is wrong n = "+str(len(params))+"\n")
+            Layout (descending powers):
+                numerator:   a0, a1, ..., an   ->  a0*x^n + a1*x^(n-1) + ... + an
+                denominator: b0, b1, ..., bn   ->  b0*x^n + b1*x^(n-1) + ... + bn
 
-        numerator = 0
-        denum = 0
-        for i in range(int(len(params)/2)):
-            numerator = numerator + params[i]*(x**i)
-            denum = denum + params[int(len(params)/2)+i]*(x**i)
-        
+        Returns
+        -------
+        y : ndarray
+            Model values:
+                y(x) = (a0*x^n + a1*x^(n-1) + ... + an) / (b0*x^n + b1*x^(n-1) + ... + bn)
+        """
 
+         
+        params = np.asarray(params, dtype=float)
+        m = params.size
+        if m % 2 != 0:
+            raise ValueError(f"Need even number of params (num + den). Got {m}")
 
-        return numerator/denum
+        k = m // 2                      # number of coeffs in numerator and denominator
+        n = k - 1                       # polynomial degree
+
+        a = params[:k]                  # numerator coeffs: a0..an (for x^n .. x^0)
+        b = params[k:]                  # denominator coeffs: b0..bn (for x^n .. x^0)
+
+        # Build powers x^n .. x^0 in a stable vectorized way
+        powers = np.vstack([x**p for p in range(n, -1, -1)])  # shape (k, len(x))
+
+        num = (a[:, None] * powers).sum(axis=0)
+        den = (b[:, None] * powers).sum(axis=0)
+
+        # prevent division-by-zero explosions (still lets optimizer move)
+        eps = 1e-300
+        den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
+
+        return num / den + self.fitnoise
 
 
 
