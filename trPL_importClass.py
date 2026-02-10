@@ -662,7 +662,9 @@ class trPL_measurement_series:
                     fit = (self.fitfunc(t, *previous_ps))
                 elif (fit_function == "rational"):
                     self.fitnoise = self.TRPLs_noise[selection[i]]
-                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t, np.log(pl), maxfev = 150000, p0 = p)
+                    data = np.log(pl)
+                    mask = ~np.isnan(data)
+                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[mask], data[mask], maxfev = 150000, p0 = p)
                     fit = np.exp(self.fitfunc2(t, *previous_ps))
                 tau_diff = -1*(np.diff(t)/np.diff(np.log(fit)))
                 print("L2 is None")
@@ -673,7 +675,10 @@ class trPL_measurement_series:
                     fit = (self.fitfunc(t[t < 1e-9*l2[i]], *previous_ps))
                     fit_denoised = fit - self.TRPLs_noise[selection[i]] 
                 elif (fit_function == "rational"):
-                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[(t < 1e-9*l2[i])], np.log(pl[(t < 1e-9*l2[i])]), maxfev = 1500000, p0 = p)
+                    data = np.log(pl)
+                    mask = (~np.isnan(data)) & (t < 1e-9*l2[i])
+                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[mask], data[mask], maxfev = 150000, p0 = p)
+                    #previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[(t < 1e-9*l2[i])], np.log(pl[(t < 1e-9*l2[i])]), maxfev = 1500000, p0 = p)
                     fit = np.exp(self.fitfunc2(t[t < 1e-9*l2[i]], *previous_ps))
                     fit_denoised = fit - self.TRPLs_noise[selection[i]]
                 tau_diff = -2*(np.diff(t[t < 1e-9*l2[i]])/np.diff(np.log(fit_denoised)))
@@ -859,6 +864,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
