@@ -9,7 +9,7 @@ import scipy
 class trPL_measurement_series:
     def __init__(self, TRPL_folderpath, BG, importPL = False, importSPV = False, thickness = None, alpha = None, TRPL_denoise = False, retime = True, mode = "HySprint", 
                  Nc = 2e18, Nv = 2e18, kT = 27.7*1e-3,  lambda_laser = 705e-9, spot_diameter =  2.72e-04, BD_ratio = 0.21, which = None, 
-                 TRPL_reprates_Hz = [], TRPL_integration_times_seconds = [], TRPL_powers = [],):
+                 TRPL_reprates_Hz = None, TRPL_integration_times_seconds = None, TRPL_powers = None,):
        
         self.lambda_laser = lambda_laser
         print("Lambda Laser set to: {:2e}".format(self.lambda_laser))
@@ -54,10 +54,9 @@ class trPL_measurement_series:
         self.B2_colors = ['#abc6e5', '#81ADC8', '#62769c', '#465970', '#303d4d', 'black']  
 
         if (importPL):
-            self.TRPL_reprates_Hz = TRPL_reprates_Hz
-            print("Test:", self.TRPL_reprates_Hz == [])
-            self.TRPL_powers = TRPL_powers
-            self.TRPL_integration_times_seconds = TRPL_integration_times_seconds
+            self.TRPL_reprates_Hz = list(TRPL_reprates_Hz) if TRPL_reprates_Hz is not None else []
+            self.TRPL_integration_times_seconds = list(TRPL_integration_times_seconds) if TRPL_integration_times_seconds is not None else []
+            self.TRPL_powers = list(TRPL_powers) if TRPL_powers is not None else []
             self.TRPLs_files, self.TRPLs_ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.TRPLs_noise = self.TRPL_folder_read()
             self.calculate_N0s()
     
@@ -864,6 +863,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
