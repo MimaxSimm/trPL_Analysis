@@ -55,6 +55,7 @@ class trPL_measurement_series:
 
         if (importPL):
             self.TRPL_reprates_Hz = TRPL_reprates_Hz
+            print("Test:", self.TRPL_reprates_Hz == [])
             self.TRPL_powers = TRPL_powers
             self.TRPL_integration_times_seconds = TRPL_integration_times_seconds
             self.TRPLs_files, self.TRPLs_ts, self.TRPLs_n, self.TRPLs_subsMean, self.TRPLs_raw, self.TRPLs_noise = self.TRPL_folder_read()
@@ -858,6 +859,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
