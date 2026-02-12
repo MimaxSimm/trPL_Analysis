@@ -689,9 +689,15 @@ class trPL_measurement_series:
                 fit = np.exp(self.fitfunc2(t_fit, *previous_ps))
             
             fit_denoised = fit - self.TRPLs_noise[selection[i]]
-            mpos = np.isfinite(fit_denoised) & (fit_denoised > 0)
-            tau_diff = -2*(np.diff(t_fit[mpos])/np.diff(np.log(fit_denoised[mpos])))
-            carrier_densities_fit = np.sqrt(fit_denoised[mpos]/np.max(fit_denoised[mpos]))*(self.n0s[selection[i]])
+
+            mpos = np.isfinite(fit_denoised) & (fit_denoised > 0) & np.isfinite(t_fit)
+
+            t2 = t_fit[mpos]
+            fd = fit_denoised[mpos]
+
+            tau_diff = -2 * (np.diff(t2) / np.diff(np.log(fd)))
+
+            carrier_densities_fit = np.sqrt(fd / np.max(fd)) * self.n0s[selection[i]]
             print('{:.2e}'.format(self.n0s[selection[i]]))
             
             #Plotting
