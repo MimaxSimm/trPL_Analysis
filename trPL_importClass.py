@@ -144,7 +144,6 @@ class trPL_measurement_series:
             TRPL = df.iloc[0:,1].to_numpy(dtype = None).astype('int')
             t = 1e-12*(df.iloc[0:,0].to_numpy(dtype = None).astype('float64'))
         elif(mode == "PicoQuant-Microscope"):
-            print("Here2")
             df =  pd.read_csv(filepath, skiprows=3, header = None, encoding='latin-1', delimiter = '\t')
             binsize_seconds = df.iloc[1].astype('float64')[0]
             self.TRPL_binsize.append(binsize_seconds)
@@ -173,7 +172,6 @@ class trPL_measurement_series:
             if(mode == "HySprint"):
                 t_TRPL = binsize_seconds*(np.arange(len(TRPL_n))-np.argmax(TRPL_n))
             elif(mode == "auto" or mode == "wannsee" or mode == "PicoQuant-Microscope"):
-                print("Here")
                 t_TRPL = t-t[np.argmax(TRPL)]
         else:
             if(mode == "HySprint"):
@@ -214,8 +212,6 @@ class trPL_measurement_series:
         else:
             files = [f for f in os.listdir(self.TRPL_folderpath) if (isfile(join(self.TRPL_folderpath, f)) and f.endswith(".dat") and (not(f.startswith("._"))))]
             files.sort()
-
-        print(files)
         
         if ((self.TRPL_reprates_Hz == []) or (self.TRPL_integration_times_seconds == []) or (self.TRPL_powers == [])):
             self.TRPL_sample = []
@@ -863,6 +859,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
