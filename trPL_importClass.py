@@ -275,6 +275,10 @@ class trPL_measurement_series:
 
         
         ts, TRPLs_n, TRPL_subsMean, TRPL_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, files[0]), self.TRPL_integration_times_seconds[0], self.TRPL_reprates_Hz[0], self.TRPL_denoise, self.retime, self.mode)
+        ts = np.asarray(ts, dtype=float).reshape(-1, 1)
+        TRPLs_n = np.asarray(TRPLs_n, dtype=float).reshape(-1, 1)
+        TRPL_subsMean = np.asarray(TRPL_subsMean, dtype=float).reshape(-1, 1)
+        TRPL_raw = np.asarray(TRPL_raw, dtype=float).reshape(-1, 1)
         
         Noise = [noise]
         
@@ -316,11 +320,10 @@ class trPL_measurement_series:
                     self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
         
             t, trpl_n, trpl_subsMean, trpl_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, f), self.TRPL_integration_times_seconds[i], self.TRPL_reprates_Hz[i], self.TRPL_denoise, self.retime, self.mode)
-
-            t = as_col(t)
-            trpl_n = as_col(trpl_n)
-            trpl_subsMean = as_col(trpl_subsMean)
-            trpl_raw = as_col(trpl_raw)
+            t = np.asarray(t, dtype=float).reshape(-1, 1)
+            trpl_n = np.asarray(trpl_n, dtype=float).reshape(-1, 1)
+            trpl_subsMean = np.asarray(trpl_subsMean, dtype=float).reshape(-1, 1)
+            trpl_raw = np.asarray(trpl_raw, dtype=float).reshape(-1, 1)
             
             max_len = max(ts.shape[0], t.shape[0])
             
@@ -890,6 +893,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
