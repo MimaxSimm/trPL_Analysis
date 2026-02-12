@@ -691,6 +691,7 @@ class trPL_measurement_series:
                 elif (fit_function == "rational"):
                     data = np.log(pl)
                     mask = (np.isfinite(data)) & (t < 1e-9*l2[i])
+                    print(i, "t min/max:", t[mask].min(), t[mask].max(), "monotonic:", np.all(np.diff(t[mask]) > 0))
                     previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[mask], data[mask], maxfev = 150000, p0 = p)
                     #previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[(t < 1e-9*l2[i])], np.log(pl[(t < 1e-9*l2[i])]), maxfev = 1500000, p0 = p)
                     fit = np.exp(self.fitfunc2(t[t < 1e-9*l2[i]], *previous_ps))
