@@ -144,7 +144,7 @@ class trPL_measurement_series:
             TRPL = df.iloc[0:,1].to_numpy(dtype = None).astype('int')
             t = 1e-12*(df.iloc[0:,0].to_numpy(dtype = None).astype('float64'))
         elif(mode == "PicoQuant-Microscope"):
-            df =  pd.read_csv(filepath, skiprows=3, header = None, encoding='latin-1', delimiter = '\t')
+            df =  pd.read_csv(filepath, skiprows=3, comment="#", header = None, encoding='latin-1', delimiter = '\t')
             binsize_seconds = df.iloc[1].astype('float64')[0]
             self.TRPL_binsize.append(binsize_seconds)
             TRPL = df.iloc[:,1].to_numpy(dtype = None).astype('int')
@@ -859,6 +859,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
