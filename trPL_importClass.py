@@ -708,8 +708,8 @@ class trPL_measurement_series:
             ax[0, i].set_xlabel("time [ns]")
             ax[0, i].set_ylabel("PL counts [#]")
 
-            ax[1, i].plot(1e9*t_fit[:-1], tau_diff)
-            ax[1, i].set_xlim([min(1e9*t_fit), max(1e9*t_fit)])
+            ax[1, i].plot(1e9*t2[:-1], tau_diff)
+            ax[1, i].set_xlim([min(1e9*t2), max(1e9*t2)])
             ax[1, i].set_xlabel("time [ns]")
             ax[1, i].set_ylabel("Differential lifetime [s]")
             
@@ -722,7 +722,7 @@ class trPL_measurement_series:
         
             densities2.append(carrier_densities_fit)
             diff_taus.append(tau_diff)
-            time_fit.append(t_fit)
+            time_fit.append(t2)
             
         f = plt.figure()
         for i, (b, c) in enumerate(zip(diff_taus, densities2)):
