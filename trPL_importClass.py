@@ -646,19 +646,21 @@ class trPL_measurement_series:
         if n_params == None:
             n_params = [5 for i in selection]
 
-        ns_raw = self.TRPLs_raw[:,selection].transpose()
-        time = self.TRPLs_ts[:,selection].transpose()
+        ns_raw = self.TRPLs_raw[:, selection]   # shape (N, nsel)
+        time   = self.TRPLs_ts[:, selection]    # shape (N, nsel)
 
-        diff_taus = []
-        densities2 = []
-        time_fit = []
+        diff_taus, densities2, time_fit = [], [], []
         print("Number of exponentials for fit used is = "+str(n_params)+"\n")
         
         f, ax = plt.subplots(3, len(selection), figsize=(25,12))
-        for i in range(len(selection)):
-            #t = time[i, (ns_raw[i, :] > 2*self.Noise[selection[0]]) & (time[i,:] > 0)]
-            t = time[i, (time[i,:] > 0)]
-            pl = ns_raw[i, (time[i,:] > 0)]
+        for i, s in enumerate(selection):
+            t_all = time[:, i]
+            pl_all = ns_raw[:, i]
+
+            # keep only valid points (important after NaN padding)
+            m = np.isfinite(t_all) & np.isfinite(pl_all) & (t_all > 0)
+            t = t_all[m]
+            pl = pl_all[m]
             #initial guess for fitting
             if (fit_function == "multi_exponential"):
                 p = [1]*(2*n_params[i]+1)
@@ -677,6 +679,7 @@ class trPL_measurement_series:
                     mask = np.isfinite(data)
                     previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[mask], data[mask], maxfev = 150000, p0 = p)
                     fit = np.exp(self.fitfunc2(t, *previous_ps))
+                fit_denoised = fit - self.TRPLs_noise[selection[i]]
                 tau_diff = -1*(np.diff(t)/np.diff(np.log(fit)))
                 print("L2 is None")
             else:
