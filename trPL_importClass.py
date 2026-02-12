@@ -326,21 +326,20 @@ class trPL_measurement_series:
             
             ts = pad_rows(ts, max_len)
             t  = pad_rows(t,  max_len)
-            ts = np.c_[ts, t]
+            ts = np.hstack([ts, t])
             
             TRPLs_n = pad_rows(TRPLs_n, max_len)
             trpl_n  = pad_rows(trpl_n,  max_len)
-            TRPLs_n = np.c_[TRPLs_n, trpl_n])
+            TRPLs_n = np.hstack([TRPLs_n, trpl_n])
             
             TRPL_subsMean = pad_rows(TRPL_subsMean, max_len)
             trpl_subsMean = pad_rows(trpl_subsMean,  max_len)
-            TRPL_subsMean = np.c_[TRPL_subsMean, trpl_subsMean]
+            TRPL_subsMean = np.hstack([TRPL_subsMean, trpl_subsMean])
             
             TRPL_raw = pad_rows(TRPL_raw, max_len)
             trpl_raw = pad_rows(trpl_raw,  max_len)
-            TRPL_raw = np.c_[TRPL_raw, trpl_raw]
-
-            
+            TRPL_raw = np.hstack([TRPL_raw, trpl_raw])
+        
             Noise.append(noise)
        
         return files, ts, TRPLs_n, TRPL_subsMean, TRPL_raw, Noise
@@ -891,6 +890,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
