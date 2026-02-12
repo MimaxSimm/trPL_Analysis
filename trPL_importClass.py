@@ -661,56 +661,49 @@ class trPL_measurement_series:
             m = np.isfinite(t_all) & np.isfinite(pl_all) & (t_all > 0)
             t = t_all[m]
             pl = pl_all[m]
+            if (l2 == None):
+                t_fit = t
+                pl_fit = pl
+                print("L2 is None")
+            else:
+                m2 = np.isfinite(t_all) & np.isfinite(pl_all) & (t_all > 0) & (t_all < 1e-9*l2[i])
+                t_fit = t_all[m2]
+                pl_fit = pl_all[m2]
+            
             #initial guess for fitting
             if (fit_function == "multi_exponential"):
                 p = [1]*(2*n_params[i]+1)
             elif (fit_function == "rational"):
                 p = [1]*(2*n_params[i])
-
-            if (l2 == None):
-                if (fit_function == "multi_exponential"):
-                    self.fitnoise = self.TRPLs_noise[selection[i]]
-                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t, (pl), maxfev = 150000, p0 = p) 
-                    #np.exp(np.log(start = 1, stop = 1+len(t[t < 1e-9*l2[i]]))))#method = 'lm', loss)
-                    fit = (self.fitfunc(t, *previous_ps))
-                elif (fit_function == "rational"):
-                    self.fitnoise = self.TRPLs_noise[selection[i]]
-                    data = np.log(pl)
-                    mask = np.isfinite(data)
-                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[mask], data[mask], maxfev = 150000, p0 = p)
-                    fit = np.exp(self.fitfunc2(t, *previous_ps))
-                fit_denoised = fit - self.TRPLs_noise[selection[i]]
-                tau_diff = -1*(np.diff(t)/np.diff(np.log(fit)))
-                print("L2 is None")
-            else:
-                self.fitnoise = self.TRPLs_noise[selection[i]]
-                if (fit_function == "multi_exponential"):
-                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t[(t < 1e-9*l2[i])], pl[(t < 1e-9*l2[i])], maxfev = 1500000, p0 = p)
-                    fit = (self.fitfunc(t[t < 1e-9*l2[i]], *previous_ps))
-                    fit_denoised = fit - self.TRPLs_noise[selection[i]] 
-                elif (fit_function == "rational"):
-                    data = np.log(pl)
-                    mask = (np.isfinite(data)) & (t < 1e-9*l2[i])
-                    print(i, "t min/max:", t[mask].min(), t[mask].max(), "monotonic:", np.all(np.diff(t[mask]) > 0))
-                    previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[mask], data[mask], maxfev = 150000, p0 = p)
-                    #previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[(t < 1e-9*l2[i])], np.log(pl[(t < 1e-9*l2[i])]), maxfev = 1500000, p0 = p)
-                    fit = np.exp(self.fitfunc2(t[t < 1e-9*l2[i]], *previous_ps))
-                    fit_denoised = fit - self.TRPLs_noise[selection[i]]
-                tau_diff = -2*(np.diff(t[t < 1e-9*l2[i]])/np.diff(np.log(fit_denoised)))
-
-            carrier_densities_fit = np.sqrt(fit_denoised/np.max(fit_denoised))*(self.n0s[selection[i]])
+          
+            self.fitnoise = self.TRPLs_noise[selection[i]]
+            if (fit_function == "multi_exponential"):
+                previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc, t_fit, pl_fit, maxfev = 1500000, p0 = p)
+                fit = (self.fitfunc(t_fit, *previous_ps))
+            elif (fit_function == "rational"):
+                data = np.log(pl_fit)
+                mask = (np.isfinite(data))
+                print(i, "t min/max:", t_fit[mask].min(), t_fit[mask].max(), "monotonic:", np.all(np.diff(t_fit[mask]) > 0))
+                previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t_fit[mask], data[mask], maxfev = 150000, p0 = p)
+                #previous_ps, pcov = scipy.optimize.curve_fit(self.fitfunc2, t[(t < 1e-9*l2[i])], np.log(pl[(t < 1e-9*l2[i])]), maxfev = 1500000, p0 = p)
+                fit = np.exp(self.fitfunc2(t_fit, *previous_ps))
+            
+            fit_denoised = fit - self.TRPLs_noise[selection[i]]
+            mpos = np.isfinite(fit_denoised) & (fit_denoised > 0)
+            tau_diff = -2*(np.diff(t_fit[mpos])/np.diff(np.log(fd = fit_denoised[mpos])))
+            carrier_densities_fit = np.sqrt(fit_denoised[mpos]/np.max(fit_denoised[mpos]))*(self.n0s[selection[i]])
             print('{:.2e}'.format(self.n0s[selection[i]]))
             
             #Plotting
             ax[0, i].scatter(1e9*t, pl, marker = 'x')
-            ax[0, i].plot(1e9*t[:len(fit)], (fit), color = 'orange')
+            ax[0, i].plot(1e9*t_fit, (fit), color = 'orange')
             ax[0, i].set_yscale("log")
             ax[0, i].set_xlim([-0.05*l2[i] , l2[i]*2])
             ax[0, i].set_xlabel("time [ns]")
             ax[0, i].set_ylabel("PL counts [#]")
 
-            ax[1, i].plot(1e9*t[:len(tau_diff)], tau_diff)
-            ax[1, i].set_xlim([min(1e9*t), max(1e9*t[:len(tau_diff)])])
+            ax[1, i].plot(1e9*t_fit[:-1], tau_diff)
+            ax[1, i].set_xlim([min(1e9*t_fit), max(1e9*t_fit)])
             ax[1, i].set_xlabel("time [ns]")
             ax[1, i].set_ylabel("Differential lifetime [s]")
             
@@ -723,7 +716,7 @@ class trPL_measurement_series:
         
             densities2.append(carrier_densities_fit)
             diff_taus.append(tau_diff)
-            time_fit.append(t[:len(fit)])
+            time_fit.append(t_fit)
             
         f = plt.figure()
         for i, (b, c) in enumerate(zip(diff_taus, densities2)):
