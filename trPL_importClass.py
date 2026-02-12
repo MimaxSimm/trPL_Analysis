@@ -205,13 +205,17 @@ class trPL_measurement_series:
         file names, time array, TRPL normalised array, TRPL (denoised), TRPL raw data, Noise levels
         
         """
-
-        def pad_rows(a, target_len):
+        
+        def as_col(x):
+            x = np.asarray(x)
+            return x.reshape(-1, 1) if x.ndim == 1 else x
+        
+        def pad_rows(a, target_len, fill=np.nan):
             a = np.asarray(a)
             if a.shape[0] >= target_len:
                 return a
             pad_shape = (target_len - a.shape[0],) + a.shape[1:]
-            pad = np.full(pad_shape, np.nan)
+            pad = np.full(pad_shape, fill, dtype=float)
             return np.concatenate([a, pad], axis=0)
         
         if(self.mode == "wannsee"):
@@ -313,22 +317,29 @@ class trPL_measurement_series:
         
             t, trpl_n, trpl_subsMean, trpl_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, f), self.TRPL_integration_times_seconds[i], self.TRPL_reprates_Hz[i], self.TRPL_denoise, self.retime, self.mode)
 
+            t = as_col(t)
+            trpl_n = as_col(trpl_n)
+            trpl_subsMean = as_col(trpl_subsMean)
+            trpl_raw = as_col(trpl_raw)
+            
             max_len = max(ts.shape[0], t.shape[0])
+            
             ts = pad_rows(ts, max_len)
-            t  = pad_rows(t, max_len)
-            ts = np.c_[ts, t]
+            t  = pad_rows(t,  max_len)
+            ts = np.hstack([ts, t])
             
             TRPLs_n = pad_rows(TRPLs_n, max_len)
-            trpl_n  = pad_rows(trpl_n, max_len)
-            TRPLs_n = np.c_[TRPLs_n, trpl_n]
-
+            trpl_n  = pad_rows(trpl_n,  max_len)
+            TRPLs_n = np.hstack([TRPLs_n, trpl_n])
+            
             TRPL_subsMean = pad_rows(TRPL_subsMean, max_len)
-            trpl_subsMean  = pad_rows(trpl_subsMean, max_len)
-            TRPL_subsMean = np.c_[TRPL_subsMean, trpl_subsMean]
-
+            trpl_subsMean = pad_rows(trpl_subsMean,  max_len)
+            TRPL_subsMean = np.hstack([TRPL_subsMean, trpl_subsMean])
+            
             TRPL_raw = pad_rows(TRPL_raw, max_len)
-            trpl_raw  = pad_rows(trpl_raw, max_len)
-            TRPL_raw = np.c_[TRPL_raw, trpl_raw]
+            trpl_raw = pad_rows(trpl_raw,  max_len)
+            TRPL_raw = np.hstack([TRPL_raw, trpl_raw])
+
             
             Noise.append(noise)
        
@@ -880,6 +891,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
