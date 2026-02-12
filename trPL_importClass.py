@@ -211,7 +211,7 @@ class trPL_measurement_series:
             return x.reshape(-1, 1) if x.ndim == 1 else x
         
         def pad_rows(a, target_len, fill=np.nan):
-            a = np.asarray(a)
+            a = np.asarray(a, dtype=float)  # allows NaNs
             if a.shape[0] >= target_len:
                 return a
             pad_shape = (target_len - a.shape[0],) + a.shape[1:]
@@ -326,19 +326,19 @@ class trPL_measurement_series:
             
             ts = pad_rows(ts, max_len)
             t  = pad_rows(t,  max_len)
-            ts = np.hstack([ts, t])
+            ts = np.c_[ts, t]
             
             TRPLs_n = pad_rows(TRPLs_n, max_len)
             trpl_n  = pad_rows(trpl_n,  max_len)
-            TRPLs_n = np.hstack([TRPLs_n, trpl_n])
+            TRPLs_n = np.c_[TRPLs_n, trpl_n])
             
             TRPL_subsMean = pad_rows(TRPL_subsMean, max_len)
             trpl_subsMean = pad_rows(trpl_subsMean,  max_len)
-            TRPL_subsMean = np.hstack([TRPL_subsMean, trpl_subsMean])
+            TRPL_subsMean = np.c_[TRPL_subsMean, trpl_subsMean]
             
             TRPL_raw = pad_rows(TRPL_raw, max_len)
             trpl_raw = pad_rows(trpl_raw,  max_len)
-            TRPL_raw = np.hstack([TRPL_raw, trpl_raw])
+            TRPL_raw = np.c_[TRPL_raw, trpl_raw]
 
             
             Noise.append(noise)
@@ -891,6 +891,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
