@@ -207,17 +207,16 @@ class trPL_measurement_series:
         """
         
         def as_col(x):
-            x = np.asarray(x)
+            x = np.asarray(x, dtype=float)
             return x.reshape(-1, 1) if x.ndim == 1 else x
         
         def pad_rows(a, target_len, fill=np.nan):
-            a = np.asarray(a, dtype=float)  # allows NaNs
+            a = as_col(a)  # <-- FORCE 2D HERE
             if a.shape[0] >= target_len:
                 return a
-            pad_shape = (target_len - a.shape[0],) + a.shape[1:]
-            pad = np.full(pad_shape, fill, dtype=float)
-            return np.concatenate([a, pad], axis=0)
-        
+            pad = np.full((target_len - a.shape[0], a.shape[1]), fill, dtype=float)
+            return np.vstack([a, pad])
+
         if(self.mode == "wannsee"):
             files = [f for f in os.listdir(self.TRPL_folderpath) if (isfile(join(self.TRPL_folderpath, f)) and f.endswith(".csv") and (not(f.startswith("._"))) and not(f.endswith(".Wfm.csv")))]
             files.sort()
@@ -275,11 +274,6 @@ class trPL_measurement_series:
 
         
         ts, TRPLs_n, TRPL_subsMean, TRPL_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, files[0]), self.TRPL_integration_times_seconds[0], self.TRPL_reprates_Hz[0], self.TRPL_denoise, self.retime, self.mode)
-        ts = np.asarray(ts, dtype=float).reshape(-1, 1)
-        TRPLs_n = np.asarray(TRPLs_n, dtype=float).reshape(-1, 1)
-        TRPL_subsMean = np.asarray(TRPL_subsMean, dtype=float).reshape(-1, 1)
-        TRPL_raw = np.asarray(TRPL_raw, dtype=float).reshape(-1, 1)
-        
         Noise = [noise]
         
         for i, f in enumerate(files):
@@ -320,28 +314,16 @@ class trPL_measurement_series:
                     self.TRPL_integration_times_seconds.append(float(meas_ps[1][:-1]))
         
             t, trpl_n, trpl_subsMean, trpl_raw, noise = self.TRPL_readout_function(join(self.TRPL_folderpath, f), self.TRPL_integration_times_seconds[i], self.TRPL_reprates_Hz[i], self.TRPL_denoise, self.retime, self.mode)
-            t = np.asarray(t, dtype=float).reshape(-1, 1)
-            trpl_n = np.asarray(trpl_n, dtype=float).reshape(-1, 1)
-            trpl_subsMean = np.asarray(trpl_subsMean, dtype=float).reshape(-1, 1)
-            trpl_raw = np.asarray(trpl_raw, dtype=float).reshape(-1, 1)
+            ts = as_col(ts); t = as_col(t)
+            TRPLs_n = as_col(TRPLs_n); trpl_n = as_col(trpl_n)
+            TRPL_subsMean = as_col(TRPL_subsMean); trpl_subsMean = as_col(trpl_subsMean)
+            TRPL_raw = as_col(TRPL_raw); trpl_raw = as_col(trpl_raw)
             
             max_len = max(ts.shape[0], t.shape[0])
-            
-            ts = pad_rows(ts, max_len)
-            t  = pad_rows(t,  max_len)
-            ts = np.hstack([ts, t])
-            
-            TRPLs_n = pad_rows(TRPLs_n, max_len)
-            trpl_n  = pad_rows(trpl_n,  max_len)
-            TRPLs_n = np.hstack([TRPLs_n, trpl_n])
-            
-            TRPL_subsMean = pad_rows(TRPL_subsMean, max_len)
-            trpl_subsMean = pad_rows(trpl_subsMean,  max_len)
-            TRPL_subsMean = np.hstack([TRPL_subsMean, trpl_subsMean])
-            
-            TRPL_raw = pad_rows(TRPL_raw, max_len)
-            trpl_raw = pad_rows(trpl_raw,  max_len)
-            TRPL_raw = np.hstack([TRPL_raw, trpl_raw])
+            ts = np.hstack([pad_rows(ts, max_len), pad_rows(t, max_len)])
+            TRPLs_n = np.hstack([pad_rows(TRPLs_n, max_len), pad_rows(trpl_n, max_len)])
+            TRPL_subsMean = np.hstack([pad_rows(TRPL_subsMean, max_len), pad_rows(trpl_subsMean, max_len)])
+            TRPL_raw = np.hstack([pad_rows(TRPL_raw, max_len), pad_rows(trpl_raw, max_len)])
         
             Noise.append(noise)
        
@@ -893,6 +875,7 @@ class trPL_measurement_series:
         den = np.where(np.abs(den) < eps, np.sign(den) * eps + eps, den)
 
         return num / den + self.fitnoise
+
 
 
 
